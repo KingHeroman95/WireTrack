@@ -4,7 +4,7 @@ const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
-const db = require('../db'); // falls noch nicht drin
+const db = require('../db');
 
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -18,14 +18,16 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage: storage });
 
-
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   if (!req.session.user) return res.redirect('/login');
 
-  db.all(`SELECT * FROM kunden`, (err, kunden) => {
-    if (err) return res.send('Fehler beim Laden');
-    res.render('kunden', { user: req.session.user, kunden });
-  });
+  try {
+    const result = await db.query(`SELECT * FROM kunden`);
+    res.render('kunden', { user: req.session.user, kunden: result.rows });
+  } catch (err) {
+    console.error(err);
+    res.send('Fehler beim Laden');
+  }
 });
 
 router.get('/neu', (req, res) => {
@@ -33,98 +35,111 @@ router.get('/neu', (req, res) => {
   res.render('kunden_neu', { user: req.session.user });
 });
 
-router.get('/details/:id', (req, res) => {
+router.get('/details/:id', async (req, res) => {
   const kundenId = req.params.id;
   const filterTyp = req.query.typ;
 
-  db.get(`SELECT * FROM kunden WHERE id = ?`, [kundenId], (err, kunde) => {
-    if (err || !kunde) return res.send("❌ Kunde nicht gefunden");
+  try {
+    const kundeResult = await db.query(`SELECT * FROM kunden WHERE id = $1`, [kundenId]);
+    const kunde = kundeResult.rows[0];
+    if (!kunde) return res.send("❌ Kunde nicht gefunden");
 
-    let query = `SELECT * FROM kundendokumente WHERE kunden_id = ?`;
-    let params = [kundenId];
+    let query = `SELECT * FROM kundendokumente WHERE kunden_id = $1`;
+    const params = [kundenId];
 
     if (filterTyp) {
-      query += ` AND typ = ?`;
+      query += ` AND typ = $2`;
       params.push(filterTyp);
     }
 
-    db.all(query, params, (err2, dokumente) => {
-      if (err2) return res.send("❌ Fehler beim Laden");
-
-      res.render('kunden_details', { kunde, dokumente, selectedTyp: filterTyp });
+    const dokumenteResult = await db.query(query, params);
+    res.render('kunden_details', {
+      kunde,
+      dokumente: dokumenteResult.rows,
+      selectedTyp: filterTyp
     });
-  });
+
+  } catch (err) {
+    console.error(err);
+    res.send("❌ Fehler beim Laden");
+  }
 });
 
-
-
-router.post('/neu', (req, res) => {
+router.post('/neu', async (req, res) => {
   const { vorname, name, adresse, plz, ort, telefon, email } = req.body;
-  db.run(`
-    INSERT INTO kunden (vorname, name, adresse, plz, ort, telefon, email)
-    VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    [vorname, name, adresse, plz, ort, telefon, email],
-    (err) => {
-      if (err) return res.send('❌ Fehler beim Speichern');
-      res.redirect('/kunden');
-    });
+
+  try {
+    await db.query(`
+      INSERT INTO kunden (vorname, name, adresse, plz, ort, telefon, email)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+    `, [vorname, name, adresse, plz, ort, telefon, email]);
+
+    res.redirect('/kunden');
+  } catch (err) {
+    console.error(err);
+    res.send('❌ Fehler beim Speichern');
+  }
 });
 
-router.post('/upload', upload.single('dokument'), (req, res) => {
+router.post('/upload', upload.single('dokument'), async (req, res) => {
   const { kunden_id, typ } = req.body;
 
   if (!req.file) return res.send("❌ Keine Datei hochgeladen");
 
-  db.run(`
-    INSERT INTO kundendokumente (kunden_id, dateiname, originalname, typ)
-    VALUES (?, ?, ?, ?)
-  `,
-    [kunden_id, req.file.filename, req.file.originalname, typ],
-    (err) => {
-      if (err) return res.send("❌ Fehler beim Speichern");
-      res.redirect(`/kunden/details/${kunden_id}`);
-    });
+  try {
+    await db.query(`
+      INSERT INTO kundendokumente (kunden_id, dateiname, originalname, typ)
+      VALUES ($1, $2, $3, $4)
+    `, [kunden_id, req.file.filename, req.file.originalname, typ]);
+
+    res.redirect(`/kunden/details/${kunden_id}`);
+  } catch (err) {
+    console.error(err);
+    res.send("❌ Fehler beim Speichern");
+  }
 });
 
-// ⬇️ Jetzt außerhalb, nicht mehr verschachtelt!
-router.post('/delete', (req, res) => {
+router.post('/delete', async (req, res) => {
   const kundenId = req.body.id;
-
-  // Sicherheitscheck: Nur Projektleiter oder GL dürfen löschen
   const rolle = req.session.user?.rolle;
+
   if (!rolle || (rolle !== 'Projektleiter' && rolle !== 'GL')) {
     return res.status(403).send("⛔ Zugriff verweigert");
   }
 
-  db.run(`DELETE FROM kunden WHERE id = ?`, [kundenId], function(err) {
-    if (err) return res.send("❌ Fehler beim Löschen");
-
-    // Auch verknüpfte Dokumente löschen
-    db.run(`DELETE FROM kundendokumente WHERE kunden_id = ?`, [kundenId], () => {
-      res.redirect('/kunden');
-    });
-  });
+  try {
+    await db.query(`DELETE FROM kunden WHERE id = $1`, [kundenId]);
+    await db.query(`DELETE FROM kundendokumente WHERE kunden_id = $1`, [kundenId]);
+    res.redirect('/kunden');
+  } catch (err) {
+    console.error(err);
+    res.send("❌ Fehler beim Löschen");
+  }
 });
-router.post('/delete-dokument', (req, res) => {
+
+router.post('/delete-dokument', async (req, res) => {
   const { dokument_id, kunden_id } = req.body;
 
-  db.get(`SELECT dateiname FROM kundendokumente WHERE id = ?`, [dokument_id], (err, row) => {
-    if (err || !row) return res.send("❌ Datei nicht gefunden");
+  try {
+    const result = await db.query(`SELECT dateiname FROM kundendokumente WHERE id = $1`, [dokument_id]);
+    const row = result.rows[0];
+    if (!row) return res.send("❌ Datei nicht gefunden");
 
-    // Datei vom Filesystem löschen
     const filePath = path.join(__dirname, '..', 'public', 'kunden_uploads', row.dateiname);
-    fs.unlink(filePath, () => {
-      // Ignorieren, wenn Datei nicht existiert
-
-      // Dann aus DB löschen
-      db.run(`DELETE FROM kundendokumente WHERE id = ?`, [dokument_id], (err2) => {
-        if (err2) return res.send("❌ Fehler beim Löschen");
+    fs.unlink(filePath, async (err) => {
+      if (err && err.code !== 'ENOENT') return res.send("❌ Fehler beim Dateilöschen");
+      try {
+        await db.query(`DELETE FROM kundendokumente WHERE id = $1`, [dokument_id]);
         res.redirect(`/kunden/details/${kunden_id}`);
-      });
+      } catch (err2) {
+        console.error(err2);
+        res.send("❌ Fehler beim Löschen");
+      }
     });
-  });
+  } catch (err) {
+    console.error(err);
+    res.send("❌ Fehler beim Laden");
+  }
 });
-
-
 
 module.exports = router;

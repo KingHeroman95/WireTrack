@@ -3,6 +3,7 @@ const router = express.Router();
 const db = require('../db');
 const multer = require('multer');
 const path = require('path');
+const fs = require('fs');
 
 // 📁 Upload-Ordner + Dateinamen-Konfiguration
 const storage = multer.diskStorage({
@@ -23,16 +24,19 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 // 📄 GET /profil – Profil anzeigen + Weiterbildungen laden
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   if (!req.session.user) return res.redirect('/login');
 
-  db.all(`SELECT * FROM weiterbildungen WHERE user_id = ?`, [req.session.user.id], (err, weiterbildungen) => {
-    if (err) return res.send('Fehler beim Laden der Weiterbildungen');
+  try {
+    const result = await db.query(`SELECT * FROM weiterbildungen WHERE user_id = $1`, [req.session.user.id]);
     res.render('profil', {
       user: req.session.user,
-      weiterbildungen
+      weiterbildungen: result.rows
     });
-  });
+  } catch (err) {
+    console.error(err);
+    res.send('Fehler beim Laden der Weiterbildungen');
+  }
 });
 
 // 📝 GET /profil/bearbeiten
@@ -41,65 +45,64 @@ router.get('/bearbeiten', (req, res) => {
   res.render('profil_bearbeiten', { user: req.session.user });
 });
 
-// 💾 POST /profil/bearbeiten – alles speichern
+// 💾 POST /profil/bearbeiten
 router.post('/bearbeiten', upload.fields([
   { name: 'profilbild', maxCount: 1 },
   { name: 'weiterbildungen', maxCount: 10 }
-]), (req, res) => {
+]), async (req, res) => {
   const { name, email, strasse, plz, ort } = req.body;
   const userId = req.session.user.id;
 
-  db.run(
-    `UPDATE users SET name = ?, email = ?, strasse = ?, plz = ?, ort = ? WHERE id = ?`,
-    [name, email, strasse, plz, ort, userId],
-    function (err) {
-      if (err) return res.send('Fehler beim Speichern');
+  try {
+    // Hauptdaten speichern
+    await db.query(
+      `UPDATE users SET name = $1, email = $2, strasse = $3, plz = $4, ort = $5 WHERE id = $6`,
+      [name, email, strasse, plz, ort, userId]
+    );
 
-      // Session aktualisieren
-      req.session.user.name = name;
-      req.session.user.email = email;
-      req.session.user.strasse = strasse;
-      req.session.user.plz = plz;
-      req.session.user.ort = ort;
+    // Session aktualisieren
+    Object.assign(req.session.user, { name, email, strasse, plz, ort });
 
-      // Profilbild speichern
-      if (req.files['profilbild']) {
-        const bild = req.files['profilbild'][0].filename;
-        db.run(`UPDATE users SET profilbild = ? WHERE id = ?`, [bild, userId]);
-        req.session.user.profilbild = bild;
-      }
-
-      // Weiterbildungen speichern
-      if (req.files['weiterbildungen']) {
-        req.files['weiterbildungen'].forEach(file => {
-          db.run(
-            `INSERT INTO weiterbildungen (user_id, dateiname, originalname) VALUES (?, ?, ?)`,
-            [userId, file.filename, file.originalname]
-          );
-        });
-      }
-
-      res.redirect('/profil');
+    // Profilbild speichern
+    if (req.files['profilbild']) {
+      const bild = req.files['profilbild'][0].filename;
+      await db.query(`UPDATE users SET profilbild = $1 WHERE id = $2`, [bild, userId]);
+      req.session.user.profilbild = bild;
     }
-  );
+
+    // Weiterbildungen speichern
+    if (req.files['weiterbildungen']) {
+      for (const file of req.files['weiterbildungen']) {
+        await db.query(
+          `INSERT INTO weiterbildungen (user_id, dateiname, originalname) VALUES ($1, $2, $3)`,
+          [userId, file.filename, file.originalname]
+        );
+      }
+    }
+
+    res.redirect('/profil');
+  } catch (err) {
+    console.error(err);
+    res.send('Fehler beim Speichern');
+  }
 });
-const fs = require('fs');
 
 // POST /profil/weiterbildung-loeschen
-router.post('/weiterbildung-loeschen', (req, res) => {
+router.post('/weiterbildung-loeschen', async (req, res) => {
   const { id, dateiname } = req.body;
   const userId = req.session.user.id;
 
-  db.run(`DELETE FROM weiterbildungen WHERE id = ? AND user_id = ?`, [id, userId], (err) => {
-    if (err) return res.send('Fehler beim Löschen');
+  try {
+    await db.query(`DELETE FROM weiterbildungen WHERE id = $1 AND user_id = $2`, [id, userId]);
 
     const filePath = path.join(__dirname, '../public/uploads/weiterbildungen/', dateiname);
     if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
 
     res.redirect('/profil');
-  });
+  } catch (err) {
+    console.error(err);
+    res.send('Fehler beim Löschen');
+  }
 });
 
-
 module.exports = router;
-

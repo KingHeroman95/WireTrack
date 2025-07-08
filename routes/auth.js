@@ -3,18 +3,18 @@ const bcrypt = require('bcryptjs');
 const router = express.Router();
 const db = require('../db');
 
+// 📥 Login-Seite
 router.get('/login', (req, res) => {
   res.render('login');
 });
 
+// 🔐 Login POST
 router.post('/login', async (req, res) => {
   const { email, password } = req.body;
 
-  db.get(`SELECT * FROM users WHERE email = ?`, [email], async (err, user) => {
-    if (err) {
-      console.error("❌ DB-Fehler beim Login:", err.message);
-      return res.render('login', { fehler: "Serverfehler. Bitte später versuchen." });
-    }
+  try {
+    const result = await db.query(`SELECT * FROM users WHERE email = $1`, [email]);
+    const user = result.rows[0];
 
     if (!user) {
       return res.render('login', { fehler: "Benutzer nicht gefunden." });
@@ -25,28 +25,33 @@ router.post('/login', async (req, res) => {
       return res.render('login', { fehler: "Falsches Passwort." });
     }
 
-    // Erfolgreich
+    // ✅ Login erfolgreich → Session setzen
     req.session.user = {
-  id: user.id,
-  name: user.name,
-  email: user.email,  
-  rolle: user.rolle
-};
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      rolle: user.rolle
+    };
+
     res.redirect('/dashboard');
-  });
+
+  } catch (err) {
+    console.error("❌ DB-Fehler beim Login:", err.message);
+    res.render('login', { fehler: "Serverfehler. Bitte später versuchen." });
+  }
 });
 
+// 🚪 Logout
 router.get('/logout', (req, res) => {
   req.session.destroy();
   res.redirect('/login');
 });
 
-module.exports = {
-  router,
-  isGL: user => user && user.rolle === 'GL',
-  isPL: user => user && user.rolle === 'PL',
-  isSekretariat: user => user && user.rolle === 'Sekretariat',
-  isMitarbeiter: user => user && user.rolle === 'Mitarbeiter',
-  isLehrling: user => user && user.rolle === 'Lehrling',
-  isAdmin: user => user && user.email === 'admin@firma.ch'
-};
+
+// 🛡️ Rollenprüfungen – überall nutzbar
+const isGL = user => user?.rolle === 'GL';
+const isPL = user => user?.rolle === 'PL';
+const isSekretariat = user => user?.rolle === 'Sekretariat';
+const isMitarbeiter = user => user?.rolle === 'Mitarbeiter';
+const isLehrling = user => user?.rolle === 'Lehrling';
+const isAdmin = user => user?.email === 'admin@firma.ch'
