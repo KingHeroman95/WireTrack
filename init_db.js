@@ -1,5 +1,5 @@
 const sqlite3 = require('sqlite3').verbose();
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 const path = require('path');
 const db = new sqlite3.Database(path.join(__dirname, 'database.db'));
 
@@ -79,7 +79,7 @@ db.serialize(async () => {
   
 
   // User anlegen
- const bcrypt = require('bcrypt');
+ const bcrypt = require('bcryptjs');
 const hash = await bcrypt.hash('password123', 10);
 
 const userData = [
