@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>📝 Eintrag bearbeiten</title>
+</head>
+<body>
+  <h1>📝 Eintrag bearbeiten</h1>
+
+  <form method="POST" action="/projekte/eintrag/bearbeiten/<%= eintrag.id %>" enctype="multipart/form-data">
+    <input type="hidden" name="eintrag_id" value="<%= eintrag.id %>">
+
+    <label>👷 Mitarbeiter:</label>
+    <p><%= eintrag.mitarbeitername %></p>
+
+    <label>📅 Datum:</label><br>
+    <input type="date" name="datum" value="<%= eintrag.datum.slice(0, 10) %>" required><br><br>
+
+    <label>⏱️ Stunden:</label><br>
+    <input type="number" name="stunden" step="0.25" min="0" value="<%= eintrag.stunden %>"><br><br>
+
+    <label>💸 Spesen (CHF):</label><br>
+    <input type="number" name="spesen" step="0.05" min="0" value="<%= eintrag.spesen %>"><br><br>
+
+    <label>📋 Tätigkeit:</label><br>
+    <textarea name="taetigkeit" rows="4" cols="50"><%= eintrag.taetigkeit || '' %></textarea><br><br>
+
+    <label>📎 Aktuelle Quittung:</label><br>
+    <% if (eintrag.quittung) { %>
+      <a href="/uploads/quittungen/<%= eintrag.quittung %>" target="_blank">📄 <%= eintrag.quittung %></a><br>
+      <label><input type="checkbox" name="quittung_loeschen" value="1"> Quittung löschen</label><br>
+    <% } else { %>
+      —<br>
+    <% } %><br>
+
+    <label>📎 Neue Quittung hochladen (optional):</label><br>
+    <input type="file" name="neue_quittung" accept=".pdf,.jpg,.jpeg,.png"><br><br>
+
+    <button type="submit">💾 Speichern</button>
+  </form>
+
+  <br>
+<a href="/projekte/details/<%= projekt.id %>">⬅️ Zurück</a>
+</body>
+</html>

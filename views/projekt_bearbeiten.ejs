@@ -1,0 +1,28 @@
+<h1>✏️ Projekt bearbeiten</h1>
+
+<form method="POST" action="/projekte/bearbeiten/<%= projekt.id %>">
+  <label>Projektname:</label><br>
+  <input type="text" name="name" value="<%= projekt.name %>" required><br><br>
+
+  <label>Beschreibung:</label><br>
+  <textarea name="beschreibung" rows="4" cols="50"><%= projekt.beschreibung %></textarea><br><br>
+
+  <label>Startdatum:</label>
+  <input type="date" name="startdatum" value="<%= projekt.startdatum %>" required><br><br>
+
+  <label>Enddatum:</label>
+  <input type="date" name="enddatum" value="<%= projekt.enddatum %>" required><br><br>
+
+  <label for="abteilung">Abteilung:</label>
+<select name="abteilung" id="abteilung" required>
+  <option value="PV">PV</option>
+  <option value="Elektro">Elektro</option>
+  <option value="Ladestation">Ladestation</option>
+  <option value="Sicherheit">Sicherheit</option>
+</select>
+
+
+  <button type="submit">💾 Speichern</button>
+</form>
+
+<a href="/projekte/details/<%= projekt.id %>">⬅️ Zurück</a>

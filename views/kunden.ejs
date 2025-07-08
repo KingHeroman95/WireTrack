@@ -1,0 +1,41 @@
+<h1>👥 Kundenliste</h1>
+<a href="/kunden/neu">➕ Neuer Kunde</a>
+
+<table border="1" cellpadding="5">
+  <tr>
+    <th>Vorname</th>
+    <th>Nachname</th>
+    <th>Adresse</th>
+    <th>PLZ</th>
+    <th>Ort</th>
+    <th>Telefon</th>
+    <th>E-Mail</th>
+    <th>Details</th>
+    <% if (user.rolle === 'Projektleiter' || user.rolle === 'GL') { %>
+      <th>Löschen</th>
+    <% } %>
+  </tr>
+
+  <% kunden.forEach(kunde => { %>
+    <tr>
+      <td><%= kunde.vorname %></td>
+      <td><%= kunde.name %></td>
+      <td><%= kunde.adresse %></td>
+      <td><%= kunde.plz %></td>
+      <td><%= kunde.ort %></td>
+      <td><%= kunde.telefon %></td>
+      <td><%= kunde.email %></td>
+      <td><a href="/kunden/details/<%= kunde.id %>">Details</a></td>
+      <% if (user.rolle === 'Projektleiter' || user.rolle === 'GL') { %>
+        <td>
+          <form method="POST" action="/kunden/delete" onsubmit="return confirm('Wirklich löschen?')">
+            <input type="hidden" name="id" value="<%= kunde.id %>">
+            <button type="submit">🗑️</button>
+          </form>
+        </td>
+      <% } %>
+    </tr>
+  <% }) %>
+</table>
+
+<a href="/dashboard">⬅️ Zurück</a>

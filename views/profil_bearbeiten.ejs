@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Profil bearbeiten</title>
+</head>
+<body>
+  <h1>🛠 Profil bearbeiten</h1>
+
+  <form method="POST" action="/profil/bearbeiten" enctype="multipart/form-data">
+    <p>
+      <label>Name:</label><br>
+      <input type="text" name="name" value="<%= user.name %>" required>
+    </p>
+
+    <p>
+      <label>E-Mail:</label><br>
+      <input type="email" name="email" value="<%= user.email %>" required>
+    </p>
+
+    <p>
+      <label>Straße:</label><br>
+      <input type="text" name="strasse" value="<%= user.strasse || '' %>">
+    </p>
+
+    <p>
+      <label>PLZ:</label><br>
+      <input type="text" name="plz" value="<%= user.plz || '' %>">
+    </p>
+
+    <p>
+      <label>Ort:</label><br>
+      <input type="text" name="ort" value="<%= user.ort || '' %>">
+    </p>
+
+    <p>
+      <label>Profilbild hochladen:</label><br>
+      <input type="file" name="profilbild" accept="image/*">
+    </p>
+
+    <p>
+      <label>Weiterbildungen hochladen (PDF, JPG, PNG):</label><br>
+      <input type="file" name="weiterbildungen" accept=".pdf,image/*" multiple>
+    </p>
+
+    <button type="submit">Speichern</button>
+  </form>
+
+  <br>
+  <a href="/profil">Zurück zum Profil</a>
+</body>
+</html>

@@ -1,0 +1,55 @@
+<h1>📁 Projekte</h1>
+<a href="/projekte/neu">➕ Neues Projekt</a>
+
+<form method="GET" action="/projekte" style="margin-bottom: 20px;">
+  <input type="text" name="suchbegriff" placeholder="🔍 Projekt oder Kunde suchen"
+         value="<%= filter?.suchbegriff || '' %>" />
+
+  <select name="abteilung">
+    <option value="">Alle Abteilungen</option>
+    <option value="PV" <%= filter?.abteilung === 'PV' ? 'selected' : '' %>>PV</option>
+    <option value="Elektro" <%= filter?.abteilung === 'Elektro' ? 'selected' : '' %>>Elektro</option>
+    <option value="Ladestation" <%= filter?.abteilung === 'Ladestation' ? 'selected' : '' %>>Ladestation</option>
+    <option value="Sicherheit" <%= filter?.abteilung === 'Sicherheit' ? 'selected' : '' %>>Sicherheit</option>
+  </select>
+
+  <select name="status">
+    <option value="">Alle Stati</option>
+    <option value="Offerte erstellt" <%= filter?.status === 'Offerte erstellt' ? 'selected' : '' %>>Offerte erstellt</option>
+    <option value="Auftrag erhalten" <%= filter?.status === 'Auftrag erhalten' ? 'selected' : '' %>>Auftrag erhalten</option>
+    <option value="In Arbeit" <%= filter?.status === 'In Arbeit' ? 'selected' : '' %>>In Arbeit</option>
+    <option value="Arbeiten erledigt" <%= filter?.status === 'Arbeiten erledigt' ? 'selected' : '' %>>Arbeiten erledigt</option>
+    <option value="Rechnung geschickt" <%= filter?.status === 'Rechnung geschickt' ? 'selected' : '' %>>Rechnung geschickt</option>
+  </select>
+
+  <button type="submit">🔄 Filtern</button>
+</form>
+
+
+
+<table border="1" cellpadding="5">
+  <thead>
+    <tr>
+      <th>Projektname</th>
+      <th>Kunde</th>
+      <th>Status</th>
+      <th>Abteilung</th>
+      <th>Details</th>
+    </tr>
+  </thead>
+  <tbody>
+    <% projekte.forEach(p => { %>
+      <tr>
+        <td><%= p.name %></td>
+        <td><%= p.kundenname %></td>
+        <td><%= p.status %></td>
+        <td><%= p.abteilung || '-' %></td>
+        <td><a href="/projekte/details/<%= p.id %>">🔍 Anzeigen</a></td>
+      </tr>
+    <% }) %>
+  </tbody>
+</table>
+
+
+<a href="/dashboard">⬅️ Zurück</a>
+

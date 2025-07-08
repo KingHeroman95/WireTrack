@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Profil</title>
+</head>
+<body>
+  <h1>👤 Profil</h1>
+
+  <% if (user.profilbild) { %>
+    <img src="/uploads/<%= user.profilbild %>" alt="Profilbild" width="150"><br>
+  <% } else { %>
+    <p>Kein Profilbild hochgeladen.</p>
+  <% } %>
+
+  <p><strong>Name:</strong> <%= user.name %></p>
+  <p><strong>E-Mail:</strong> <%= user.email %></p>
+
+  <p><strong>Adresse:</strong><br>
+    <%= user.strasse || '-' %>, <%= user.plz || '' %> <%= user.ort || '' %>
+  </p>
+
+  <hr>
+
+<h3>🏅 Weiterbildungen & Kurse:</h3>
+<% if (weiterbildungen.length === 0) { %>
+  <p>Keine Weiterbildungen oder Kurse hochgeladen.</p>
+<% } else { %>
+  <ul>
+    <% weiterbildungen.forEach(wb => { %>
+      <li>
+        <a href="/uploads/weiterbildungen/<%= wb.dateiname %>" target="_blank">
+          <%= wb.originalname %>
+        </a>
+        <form method="POST" action="/profil/weiterbildung-loeschen" style="display:inline;">
+          <input type="hidden" name="id" value="<%= wb.id %>">
+          <input type="hidden" name="dateiname" value="<%= wb.dateiname %>">
+          <button type="submit" onclick="return confirm('Wirklich löschen?')">🗑️</button>
+        </form>
+      </li>
+    <% }) %>
+  </ul>
+<% } %>
+
+  <br>
+  <a href="/profil/bearbeiten">✏️ Profil bearbeiten</a><br>
+  <a href="/dashboard">Zurück zum Dashboard</a>
+</body>
+</html>

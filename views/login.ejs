@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+<head><title>Login</title></head>
+<body>
+  <h1>Login</h1>
+<% if (typeof fehler !== 'undefined') { %>
+  <p style="color:red"><%= fehler %></p>
+<% } %>
+  <form method="POST" action="/login">
+    <input name="email" type="email" placeholder="E-Mail" required /><br/>
+    <input name="password" type="password" placeholder="Passwort" required /><br/>
+    <button type="submit">Login</button>
+  </form>
+</body>
+</html>

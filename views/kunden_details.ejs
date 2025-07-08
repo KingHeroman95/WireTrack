@@ -1,0 +1,60 @@
+<h1>👤 Kunde: <%= kunde.vorname %> <%= kunde.name %></h1>
+
+
+
+<p><strong>Adresse:</strong> <%= kunde.adresse %></p>
+<p><strong>PLZ / Ort:</strong> <%= kunde.plz %> <%= kunde.ort %></p>
+<p><strong>Telefon:</strong> <%= kunde.telefon %></p>
+<p><strong>E-Mail:</strong> <%= kunde.email %></p>
+
+<hr>
+
+<h2>📂 Dokumente</h2>
+
+<form method="GET" action="/kunden/details/<%= kunde.id %>">
+  <label>Filtern nach Typ:</label>
+  <select name="typ">
+    <option value="">Alle</option>
+    <option value="Rechnung" <%= selectedTyp === 'Rechnung' ? 'selected' : '' %>>Rechnung</option>
+    <option value="Offerte" <%= selectedTyp === 'Offerte' ? 'selected' : '' %>>Offerte</option>
+    <option value="Plan" <%= selectedTyp === 'Plan' ? 'selected' : '' %>>Plan</option>
+  </select>
+  <button type="submit">Filtern</button>
+</form>
+
+<ul>
+  <% dokumente.forEach(doc => { %>
+    <li>
+      <a href="/kunden_uploads/<%= doc.dateiname %>" target="_blank"><%= doc.originalname %></a>
+      (<%= doc.typ %>)
+      <form method="POST" action="/kunden/delete-dokument" style="display:inline;">
+        <input type="hidden" name="dokument_id" value="<%= doc.id %>">
+        <input type="hidden" name="kunden_id" value="<%= kunde.id %>">
+        <button type="submit">🗑️ Löschen</button>
+      </form>
+    </li>
+  <% }) %>
+</ul>
+
+<hr>
+
+<h2>📤 Neues Dokument hochladen</h2>
+<form method="POST" action="/kunden/upload" enctype="multipart/form-data">
+  <input type="hidden" name="kunden_id" value="<%= kunde.id %>">
+  <label>Datei:</label>
+  <input type="file" name="dokument" required>
+  <label>Typ:</label>
+  <select name="typ" required>
+    <option value="Rechnung">Rechnung</option>
+    <option value="Offerte">Offerte</option>
+    <option value="Plan">Plan</option>
+  </select>
+  <button type="submit">Hochladen</button>
+</form>
+
+<hr>
+
+<h2>📋 Verknüpfte Projekte / Aufträge</h2>
+<p>(🔧 Noch keine Daten – folgt später)</p>
+
+<a href="/kunden">⬅️ Zurück</a>

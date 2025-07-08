@@ -1,0 +1,389 @@
+<h1>🔧 Projekt: <%= projekt.name %></h1>
+<p><strong>Kunde:</strong> <%= projekt.kundenname %></p>
+  <%= projekt.strasse %><br>
+  <%= projekt.plz %> <%= projekt.ort %><br>
+  <a href="https://www.google.com/maps/search/<%= encodeURIComponent(projekt.strasse + ', ' + projekt.plz + ' ' + projekt.ort) %>" target="_blank">
+    ➡️ Route in Google Maps
+  </a>
+</p>
+
+<p><strong>Zeitraum:</strong> 
+  <%= new Date(projekt.startdatum).toLocaleDateString('de-CH') %> – 
+  <%= new Date(projekt.enddatum).toLocaleDateString('de-CH') %>
+</p>
+<p><strong>Beschreibung:</strong> <%= projekt.beschreibung %></p>
+
+<a href="/projekte/bearbeiten/<%= projekt.id %>">✏️ Projekt bearbeiten</a>
+
+<!-- 📌 Status ändern -->
+<form id="statusForm" method="POST" action="/projekte/status">
+  <input type="hidden" name="projekt_id" value="<%= projekt.id %>">
+  <label>Status:</label>
+  <select id="statusSelect" name="status">
+    <option <%= projekt.status === 'Offerte erstellt' ? 'selected' : '' %>>Offerte erstellt</option>
+    <option <%= projekt.status === 'Auftrag erhalten' ? 'selected' : '' %>>Auftrag erhalten</option>
+    <option <%= projekt.status === 'In Arbeit' ? 'selected' : '' %>>In Arbeit</option>
+    <option <%= projekt.status === 'Arbeiten erledigt' ? 'selected' : '' %>>Arbeiten erledigt</option>
+    <option <%= projekt.status === 'Rechnung geschickt' ? 'selected' : '' %>>Rechnung geschickt</option>
+  </select>
+  <button type="submit">📌 Status speichern</button>
+</form>
+
+<script>
+  document.getElementById('statusForm').addEventListener('submit', function (e) {
+    const selectedStatus = document.getElementById('statusSelect').value;
+    if (selectedStatus === 'Arbeiten erledigt') {
+      const confirmed = confirm("⚠️ Bitte denke daran, das Messprotokoll auszufüllen und hochzuladen!");
+      if (!confirmed) {
+        e.preventDefault(); // verhindert Absenden
+      }
+    }
+  });
+</script>
+
+<hr>
+<h3>➕ Arbeit hinzufügen</h3>
+<form method="POST" action="/projekte/eintrag">
+  <input type="hidden" name="projekt_id" value="<%= projekt.id %>">
+
+  <div>
+    <label>Mitarbeiter:</label>
+    <select name="mitarbeiter_id" required>
+      <% mitarbeiterListe.forEach(m => { %>
+        <option value="<%= m.id %>" <%= m.id === user.id ? 'selected' : '' %>><%= m.name %></option>
+      <% }) %>
+    </select>
+  </div>
+
+  <div>
+    <label>Datum:</label>
+    <input type="date" name="datum" required />
+  </div>
+
+  <div>
+    <label>Stunden:</label>
+    <input type="number" name="stunden" step="0.25" min="0" />
+  </div>
+
+  <div>
+    <label>Tätigkeit:</label>
+    <input type="text" name="taetigkeit" />
+  </div>
+
+  <button type="submit">💾 Eintrag speichern</button>
+</form>
+
+<h3>➕ Spesen erfassen</h3>
+<form method="POST" action="/projekte/eintrag" enctype="multipart/form-data">
+  <input type="hidden" name="projekt_id" value="<%= projekt.id %>">
+  <input type="hidden" name="mitarbeiter_id" value="<%= user.id %>">
+  <input type="hidden" name="stunden" value="0">
+
+  <label>Datum:</label>
+  <input type="date" name="datum" required>
+
+  <label>Spesen (CHF):</label>
+  <input type="number" step="0.05" name="spesen" required>
+
+  <label>📎 Quittung (PDF/JPG):</label>
+  <input type="file" name="quittung" accept=".pdf,.jpg,.jpeg,.png">
+
+  <button type="submit">➕ Hinzufügen</button>
+</form>
+
+
+<hr>
+<h3>📋 Alle Einträge</h3>
+<table border="1" cellpadding="5">
+  <tr>
+    <th>Datum</th>
+    <th>Mitarbeiter</th>
+    <th>Stunden</th>
+    <th>Spesen</th>
+    <th>Tätigkeit</th>
+    <th>📎 Quittung</th>
+    <th>Bearbeiten</th>
+  </tr>
+  <% eintraege.forEach(e => { %>
+    <tr>
+      <td><%= new Date(e.datum).toLocaleDateString('de-CH') %></td>
+      <td><%= e.mitarbeitername %></td>
+      <td><%= e.stunden.toFixed(2) %></td>
+      <td>CHF <%= e.spesen.toFixed(2) %></td>
+      <td><%= Array.isArray(e.taetigkeit) ? e.taetigkeit.join("; ") : e.taetigkeit %></td>
+
+<td>
+  <% if (e.quittung) { %>
+    <a href="/uploads/quittungen/<%= e.quittung %>" target="_blank">📄 Ansehen</a>
+    
+    <% if (user.rolle === 'GL' || user.rolle === 'PL' || user.rolle === 'Sekretariat') { %>
+      <form method="POST" action="/projekte/eintrag/bearbeiten/<%= e.id %>" enctype="multipart/form-data" style="display:inline;">
+        <input type="hidden" name="datum" value="<%= e.datum %>">
+        <input type="hidden" name="stunden" value="<%= e.stunden %>">
+        <input type="hidden" name="spesen" value="<%= e.spesen %>">
+        <input type="hidden" name="taetigkeit" value="<%= Array.isArray(e.taetigkeit) ? e.taetigkeit.join(', ') : e.taetigkeit %>">
+        <input type="hidden" name="quittung_loeschen" value="1">
+        <button type="submit" title="Quittung löschen" onclick="return confirm('Wirklich löschen?')">🗑️</button>
+      </form>
+    <% } %>
+
+  <% } else { %>
+    —
+  <% } %>
+</td>
+      <td>
+        <% if (user.rolle === 'GL' || user.id === e.mitarbeiter_id) { %>
+          <a href="/projekte/eintrag/bearbeiten/<%= e.id %>">✏️</a>
+        <% } else { %>
+          —
+        <% } %>
+      </td>
+    </tr>
+  <% }) %>
+</table>
+npm
+<tr>
+  <td colspan="6" style="font-weight: bold; background-color: #f0f0f0;">
+    🕒 Gesamte Stunden: <%= summeStunden.toFixed(2) %> h
+  </td>
+</tr>
+/
+<tr>
+  <td colspan="6" style="font-weight: bold; background-color: #f0f0f0;">
+    💸 Gesamte Spesen: CHF <%= summeSpesen.toFixed(2) %>
+  </td>
+</tr>
+
+
+<hr>
+<hr>
+<h3>🧱 Material erfassen</h3>
+<form method="POST" action="/projekte/<%= projekt.id %>/material/hinzufuegen">
+  <label>E-Nummer:</label>
+  <input type="text" name="artikelnummer" id="artikelnummer" autocomplete="off" required>
+
+  <label>Bezeichnung:</label>
+  <input type="text" name="bezeichnung" id="bezeichnung" autocomplete="off" required>
+
+  <label>Menge:</label>
+  <input type="number" step="0.01" min="0" name="menge" required>
+
+  <label>Preis (CHF):</label>
+  <input type="number" step="0.01" min="0" name="einzelpreis" id="einzelpreis" required>
+
+  <input type="hidden" name="quelle" id="quelle" value="Top1000">
+
+  <button type="submit">📦 Speichern</button>
+</form>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const artikelInput = document.getElementById('artikelnummer');
+  const bezeichnungInput = document.getElementById('bezeichnung');
+  const preisInput = document.getElementById('einzelpreis');
+
+  function createDropdown(input, results) {
+    let dropdown = document.createElement('ul');
+    dropdown.className = 'autocomplete-dropdown';
+    dropdown.style.position = 'absolute';
+    dropdown.style.zIndex = '9999';
+    dropdown.style.backgroundColor = 'white';
+    dropdown.style.border = '1px solid #ccc';
+    dropdown.style.listStyle = 'none';
+    dropdown.style.padding = '0';
+    dropdown.style.margin = '0';
+    dropdown.style.maxHeight = '200px';
+    dropdown.style.overflowY = 'auto';
+    dropdown.style.width = input.offsetWidth + 'px';
+
+    results.forEach(item => {
+      let li = document.createElement('li');
+      li.textContent = `${item.eNummer} – ${item.bezeichnung}`;
+      li.style.padding = '6px';
+      li.style.cursor = 'pointer';
+      li.addEventListener('mousedown', () => {
+        artikelInput.value = item.eNummer;
+        bezeichnungInput.value = item.bezeichnung;
+        preisInput.value = item.preis;
+        dropdown.remove();
+      });
+      dropdown.appendChild(li);
+    });
+
+    removeDropdown(); // Entferne vorherige
+    input.parentNode.appendChild(dropdown);
+  }
+
+  function removeDropdown() {
+    let old = document.querySelectorAll('.autocomplete-dropdown');
+    old.forEach(el => el.remove());
+  }
+
+  async function fetchVorschlaege(text) {
+    const res = await fetch(`/projekte/material/autocomplete?q=${encodeURIComponent(text)}`);
+    return res.json();
+  }
+
+  function handleAutocomplete(input) {
+    input.addEventListener('input', async () => {
+      const val = input.value;
+      if (val.length < 2) return removeDropdown();
+
+      const vorschlaege = await fetchVorschlaege(val);
+      if (vorschlaege.length > 0) {
+        createDropdown(input, vorschlaege);
+      } else {
+        removeDropdown();
+      }
+    });
+
+    input.addEventListener('blur', () => {
+      setTimeout(removeDropdown, 200); // kurz warten wegen Klick
+    });
+  }
+
+  handleAutocomplete(artikelInput);
+  handleAutocomplete(bezeichnungInput);
+});
+</script>
+
+<!-- 💾 Tabelle für erfasstes Material -->
+<h3>📦 Erfasstes Material</h3>
+<table border="1" cellpadding="5">
+  <tr>
+    <th>E-Nummer</th>
+    <th>Bezeichnung</th>
+    <th>Menge</th>
+    <th>Einzelpreis</th>
+    <th>Gesamtpreis</th>
+    <th>Aktion</th>
+  </tr>
+  <% projektmaterial.forEach(m => { %>
+    <tr>
+      <td><%= m.artikelnummer %></td>
+      <td><%= m.bezeichnung %></td>
+      <td>
+        <form method="POST" action="/projekte/<%= projekt.id %>/material/<%= m.id %>/menge">
+          <input name="menge" type="number" step="0.01" value="<%= m.menge %>" style="width: 60px;">
+          <button type="submit">💾</button>
+        </form>
+      </td>
+      <td>CHF <%= m.einzelpreis?.toFixed(2) || '0.00' %></td>
+      <td>CHF <%= m.gesamtpreis?.toFixed(2) || '0.00' %></td>
+      <td style="white-space: nowrap;">
+        <% if (['GL', 'PL', 'Sekretariat'].includes(user.rolle)) { %>
+          <form method="POST" action="/projekte/<%= projekt.id %>/material/<%= m.id %>/loeschen" style="display:inline;" onsubmit="return confirm('Wirklich löschen?')">
+            <button type="submit">🗑️</button>
+          </form>
+        <% } %>
+      </td>
+    </tr>
+  <% }) %>
+</table>
+
+
+<% if (projektmaterial && projektmaterial.length > 0) { %>
+  <p><strong>🧮 Gesamtkosten Material: CHF <%= projektmaterial.reduce((sum, m) => sum + m.gesamtpreis, 0).toFixed(2) %></strong></p>
+<% } %>
+
+
+<hr>
+<h3>📎 Projektdateien</h3>
+
+<!-- 🔍 Filter und Suche -->
+<form method="GET" action="" style="margin-bottom: 1em;">
+  <input type="hidden" name="id" value="<%= projekt.id %>">
+  <label for="typ">Typ:</label>
+  <select name="typ">
+    <option value="">Alle</option>
+    <option value="Plan" <%= filterTyp === 'Plan' ? 'selected' : '' %>>Plan</option>
+    <option value="Offerte" <%= filterTyp === 'Offerte' ? 'selected' : '' %>>Offerte</option>
+    <option value="Rechnung" <%= filterTyp === 'Rechnung' ? 'selected' : '' %>>Rechnung</option>
+    <option value="A-Konto" <%= filterTyp === 'A-Konto' ? 'selected' : '' %>>A-Konto</option>
+    <option value="Bestellung" <%= filterTyp === 'Bestellung' ? 'selected' : '' %>>Bestellung</option>
+  </select>
+  <label for="suche">🔍 Beschreibung:</label>
+  <input type="text" name="suche" value="<%= suche || '' %>">
+  <button type="submit">🔎 Filtern</button>
+</form>
+
+<!-- 📤 Upload-Formular -->
+<form method="POST" action="/projekte/details/<%= projekt.id %>/upload" enctype="multipart/form-data">
+  <label>Datei:</label>
+  <input type="file" name="projektdatei" required>
+
+  <label>Typ:</label>
+  <select name="typ" required>
+    <option value="Plan">Plan</option>
+    <option value="Offerte">Offerte</option>
+    <option value="Rechnung">Rechnung</option>
+    <option value="A-Konto">A-Konto</option>
+    <option value="Bestellung">Bestellung</option>
+  </select>
+
+  <label>Beschreibung:</label>
+  <input type="text" name="beschreibung">
+
+  <button type="submit">📥 Hochladen</button>
+</form>
+
+<!-- 📄 Dateiliste -->
+<table border="1" cellpadding="5">
+  <tr>
+    <th>📁 Datei</th>
+    <th>📝 Beschreibung</th>
+    <th>📂 Typ</th>
+    <th>Aktion</th>
+  </tr>
+<% projektdateien.forEach(d => { %>
+  <tr>
+    <td><a href="/uploads/projektdateien/<%= d.dateiname %>" target="_blank"><%= d.originalname %></a></td>
+    <td><%= d.beschreibung || '-' %></td>
+    <td><%= d.typ %></td>
+    <td>
+      <% if (['GL', 'PL', 'Sekretariat'].includes(user.rolle)) { %>
+        <form method="POST" action="/projekte/details/<%= projekt.id %>/delete-file/<%= d.id %>">
+          <button type="submit" onclick="return confirm('Sicher löschen?')">🗑️ Löschen</button>
+        </form>
+      <% } %>
+    </td>
+  </tr>
+<% }) %>
+</table>
+
+<hr>
+<h3>🔢 Gesamtsummen</h3>
+
+<% 
+  const stundensatzMonteur = 60;
+  const stundensatzLehrling = 30;
+
+  const monteurstunden = eintraege.filter(e => e.rolle !== 'Lehrling');
+  const lehrlingsstunden = eintraege.filter(e => e.rolle === 'Lehrling');
+
+  const sumMonteur = monteurstunden.reduce((sum, e) => sum + e.stunden, 0);
+  const sumLehrling = lehrlingsstunden.reduce((sum, e) => sum + e.stunden, 0);
+
+  const kostenMonteur = sumMonteur * stundensatzMonteur;
+  const kostenLehrling = sumLehrling * stundensatzLehrling;
+  const gesamtKosten = kostenMonteur + kostenLehrling;
+%>
+
+<% if (['GL', 'PL', 'Sekretariat'].includes(user.rolle)) { %>
+  <h3>🧾 Abrechnungseinheit</h3>
+  <p>🧑‍🔧 Monteurstunden: <%= sumMonteur.toFixed(2) %> h × CHF <%= stundensatzMonteur %> = CHF <%= kostenMonteur.toFixed(2) %></p>
+  <p>👨‍🎓 Lehrlingsstunden: <%= sumLehrling.toFixed(2) %> h × CHF <%= stundensatzLehrling %> = CHF <%= kostenLehrling.toFixed(2) %></p>
+  <p><strong>💰 Aktuelle Personalkosten total: CHF <%= gesamtKosten.toFixed(2) %></strong></p>
+<% } %>
+<% if (projektmaterial && projektmaterial.length > 0) { %>
+  <p><strong>🧮 Aktuelle Materialkosten total: CHF <%= projektmaterial.reduce((sum, m) => sum + m.gesamtpreis, 0).toFixed(2) %></strong></p>
+<% } %>
+<p><strong>💸 Aktuelle Spesenkosten total: CHF <%= eintraege.reduce((sum, e) => sum + e.spesen, 0).toFixed(2) %><p><strong>
+
+<h4 style="color: green;">💰 Gesamtkosten total: CHF <%= gesamtkosten.toFixed(2) %></h4>
+
+
+<a href="/projekte">⬅️ Zurück</a>
+
+<script src="/js/material_autocomplete.js"></script>
+
